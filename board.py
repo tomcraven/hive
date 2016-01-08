@@ -2,6 +2,7 @@ from tile import Tile, TileType
 from player import PlayerNumber
 import config, pygame, itertools
 from position import Position
+from draw import Draw
 
 class Board:
 	def __init__( self ):
@@ -10,34 +11,18 @@ class Board:
 	def update( self ):
 		# get moves for each player? (maybe do this outside of this class)
 		# check for win/lose condition
+		# make sure we can see the whole board on the screen
 		pass
 
 	def render( self, surface ):
 		for tile in self.tiles:
 			tile.render( surface )
 
-		# Render the coordinates of any adjacent blank slots adjacent to pieces
+		# Render the coordinates of all tiles and their adjacent pieces
+		# We're rendering each coordinate multiple times here, but it shouldn't matter too much
 		for tile in self.tiles:
 			for position in tile.get_position().get_adjacent_positions():
-				if len( self.get_tiles_with_position( position ) ) != 0:
-					continue
-
-				x_position_modifier = 0
-				if not position.is_even_row():
-					half_width = tile.image.get_width() / 2
-					x_position_modifier += half_width
-
-				render_position = [ 
-					( position.get()[0] * tile.image.get_width() ) + x_position_modifier, 
-					position.get()[1] * ( tile.image.get_height() * 0.75 )
-				]
-
-				myfont = pygame.font.SysFont("monospace", 15)
-				position_label = myfont.render(str(position), 1, (0, 0, 255))
-				position_label_position = [ render_position[ 0 ] + ( tile.image.get_width() / 2 ) - ( position_label.get_width() / 2 ), 
-					render_position[ 1 ] + ( tile.image.get_height() / 2 ) - ( position_label.get_height() / 2 ) ]
-				surface.fill( ( 255, 255, 255 ), [ position_label_position, position_label.get_size() ] )
-				surface.blit(position_label, position_label_position )
+				Draw.coordinate( surface, position )
 
 	def touching( self, tile_position, position ):
 		return position in tile_position.get_adjacent_positions()
@@ -68,11 +53,9 @@ class Board:
 		if len( players_tiles ) <= config.maximum_moves_before_bee:
 			return False
 
-		for tile in players_tiles:
-			if tile.type == TileType.bee:
-				return False
+		has_played_bee = any( [ tile.type == TileType.bee for tile in players_tiles ] )
 
-		return True
+		return not has_played_bee
 
 	def validate_tile_placement( self, position, player ):
 
@@ -117,8 +100,11 @@ class Board:
 	def get_tiles_with_position( self, position ):
 		return [ x for x in self.tiles if x.get_position() == position ]
 
-	def hive_is_connected( self, tiles ):
+	def hive_is_connected( self, tiles = None ):
 		visited_tiles = []
+
+		if tiles is None:
+			tiles = self.tiles
 
 		def count_island_size( tile ):
 			visited_tiles.append( tile )
@@ -137,7 +123,7 @@ class Board:
 	def tile_is_pinned( self, tile ):
 		# Check that removing the tile doesn't create any islands
 		self.tiles.remove( tile )
-		connected_hive = self.hive_is_connected( self.tiles )
+		connected_hive = self.hive_is_connected()
 		self.tiles.append( tile )
 
 		return not connected_hive
@@ -159,48 +145,3 @@ class Board:
 		self.validate_tile_movement( tile, position )
 
 		tile.set_position( position, self )
-
-def __test_touching():
-	from tile import TileType
-
-	board = Board()
-
-	assert board.touching( [ 1, 3 ], [ 1, 1 ] )
-	assert board.touching( [ 1, 3 ], [ 2, 2 ] )
-	assert board.touching( [ 1, 3 ], [ 2, 4 ] )
-	assert board.touching( [ 1, 3 ], [ 1, 5 ] )
-	assert board.touching( [ 1, 3 ], [ 1, 4 ] )
-	assert board.touching( [ 1, 3 ], [ 1, 2 ] )
-	assert not board.touching( [ 1, 3 ], [ 1, 0 ] )
-	assert not board.touching( [ 1, 3 ], [ 0, 1 ] )
-	assert not board.touching( [ 1, 3 ], [ 0, 3 ] )
-	assert not board.touching( [ 1, 3 ], [ 0, 5 ] )
-	assert not board.touching( [ 1, 3 ], [ 1, 7 ] )
-	assert not board.touching( [ 1, 3 ], [ 2, 6 ] )
-	assert not board.touching( [ 1, 3 ], [ 2, 5 ] )
-	assert not board.touching( [ 1, 3 ], [ 2, 3 ] )
-	assert not board.touching( [ 1, 3 ], [ 2, 1 ] )
-	assert not board.touching( [ 1, 3 ], [ 2, 0 ] )
-	assert not board.touching( [ 1, 3 ], [ 1, -1 ] )
-
-	assert board.touching( [ 2, 2 ], [ 2, 0 ] )
-	assert board.touching( [ 2, 2 ], [ 2, 1 ] )
-	assert board.touching( [ 2, 2 ], [ 2, 3 ] )
-	assert board.touching( [ 2, 2 ], [ 2, 4 ] )
-	assert board.touching( [ 2, 2 ], [ 1, 3 ] )
-	assert board.touching( [ 2, 2 ], [ 1, 1 ] )
-	assert not board.touching( [ 2, 2 ], [ 2, -2 ] )
-	assert not board.touching( [ 2, 2 ], [ 2, -1 ] )
-	assert not board.touching( [ 2, 2 ], [ 3, 0 ] )
-	assert not board.touching( [ 2, 2 ], [ 3, 2 ] )
-	assert not board.touching( [ 2, 2 ], [ 3, 4 ] )
-	assert not board.touching( [ 2, 2 ], [ 2, 5 ] )
-	assert not board.touching( [ 2, 2 ], [ 2, 6 ] )
-	assert not board.touching( [ 2, 2 ], [ 1, 5 ] )
-	assert not board.touching( [ 2, 2 ], [ 1, 4 ] )
-	assert not board.touching( [ 2, 2 ], [ 1, 2 ] )
-	assert not board.touching( [ 2, 2 ], [ 1, 0 ] )
-	assert not board.touching( [ 2, 2 ], [ 1, -1 ] )
-
-if __name__ == '__main__':
-	__test_touching()

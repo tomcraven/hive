@@ -1,11 +1,12 @@
 import pygame
 
-__loaded_textures = {}
+__loaded_textures = []
 def load( path ):
-	# if __loaded_textures.has_key( path ):
-	# 	return __loaded_textures[ path ]
+	__loaded_textures.append( pygame.image.load( path ) )
+	return __loaded_textures[ len( __loaded_textures ) - 1 ]
 
-	# __loaded_textures[ path ] = pygame.image.load( path )
-	# return __loaded_textures[ path ]
+def average_width():
+	return sum( [ x.get_width() for x in __loaded_textures ] ) / len( __loaded_textures )
 
-	return pygame.image.load( path )
+def average_height():
+	return sum( [ x.get_height() for x in __loaded_textures ] ) / len( __loaded_textures )

@@ -3,6 +3,7 @@ from enum import Enum
 import texture_manager
 from player import PlayerNumber
 from position import Position
+from draw import Draw
 
 class Tile( object ):
 	@staticmethod
@@ -17,6 +18,7 @@ class Tile( object ):
 		self.type = tile_type
 		self.beetle_ontop = None
 
+		# Set the tile type colour
 		self.image.fill( tile_type_colours[ tile_type ], special_flags = pygame.BLEND_ADD )
 
 		# Set the player colour, i can't think of a better way to do this atm...
@@ -51,20 +53,11 @@ class Tile( object ):
 	def get_height( self ):
 		return self.image.get_height()
 
-	def render_position_coordinates( self, surface ):
-		myfont = pygame.font.SysFont("monospace", 15)
-		position_label = myfont.render(str(self.__position.get()), 1, (0, 0, 255))
-		position_label_position = [ self.__render_position[ 0 ] + ( self.get_width() / 2 ) - ( position_label.get_width() / 2 ), 
-			self.__render_position[ 1 ] + ( self.get_height() / 2 ) - ( position_label.get_height() / 2 ) ]
-		surface.fill( ( 255, 255, 255 ), [ position_label_position, position_label.get_size() ] )
-		surface.blit(position_label, position_label_position )
-
 	def get_render_position( self ):
 		return self.__render_position[:]
 
 	def render( self, surface ):
 		surface.blit( self.image, self.__render_position )
-		self.render_position_coordinates( surface )
 
 	def adjacent_position_movement_is_wide_enough( self, board, begin, end ):
 		# distance between begin and end should be 1
@@ -250,7 +243,6 @@ class Beetle( Tile ):
 
 	def render( self, surface ):
 		surface.blit( self.__scaled_image, self.__render_position )
-		self.render_position_coordinates( surface )
 
 class GrassHopper( Tile ):
 	def __init__( self, player ):
