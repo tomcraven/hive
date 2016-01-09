@@ -53,7 +53,7 @@ class Board:
 		if len( players_tiles ) <= config.maximum_moves_before_bee:
 			return False
 
-		has_played_bee = any( [ tile.type == TileType.bee for tile in players_tiles ] )
+		has_played_bee = ( [ tile.type for tile in players_tiles ].count( TileType.bee ) == 1 )
 
 		return not has_played_bee
 

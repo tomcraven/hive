@@ -31,33 +31,12 @@ class Tile( object ):
 	def get_position( self ):
 		return self.__position
 
-	def calculate_render_position( self, position ):
-		# odd rows are indented by half width
-		x_position_modifier = 0
-		if not self.__position.is_even_row():
-			half_width = self.image.get_width() / 2
-			x_position_modifier += half_width
-
-		return [ 
-			( self.__position.get()[0] * self.image.get_width() ) + x_position_modifier, 
-			self.__position.get()[1] * ( self.image.get_height() * 0.75 )
-		]
-
 	def set_position( self, position, board ):
 		self.__position.set( position )
-		self.__render_position = self.calculate_render_position( self.__position )
-
-	def get_width( self ):
-		return self.image.get_width()
-
-	def get_height( self ):
-		return self.image.get_height()
-
-	def get_render_position( self ):
-		return self.__render_position[:]
+		self.__render_position = Draw.get_render_position( self.__position )
 
 	def render( self, surface ):
-		surface.blit( self.image, self.__render_position )
+		Draw.image( surface, self.image, self.__position )
 
 	def adjacent_position_movement_is_wide_enough( self, board, begin, end ):
 		# distance between begin and end should be 1
@@ -237,12 +216,12 @@ class Beetle( Tile ):
 		self.__scaled_image = pygame.transform.scale( self.image, 
 			[ int( self.image.get_width() * scale_factor ), int( self.image.get_height() * scale_factor ) ] )
 
-		self.__render_position = self.calculate_render_position( self.get_position() )
+		self.__render_position = Draw.get_render_position( self.get_position() )
 		self.__render_position[ 0 ] += ( self.image.get_width() - self.__scaled_image.get_width() ) / 2
 		self.__render_position[ 1 ] += ( self.image.get_height() - self.__scaled_image.get_height() ) / 2
 
 	def render( self, surface ):
-		surface.blit( self.__scaled_image, self.__render_position )
+		Draw.image_explicit( surface, self.__scaled_image, *self.__render_position )
 
 class GrassHopper( Tile ):
 	def __init__( self, player ):
@@ -258,33 +237,16 @@ class GrassHopper( Tile ):
 
 			return find_first_blank_square( callback( position ), callback )
 
-		def east( position ):
-			return position.east()
-
-		def west( position ):
-			return position.west()
-
-		def north_west( position ):
-			return position.north_west()
-
-		def north_east( position ):
-			return position.north_east()
-
-		def south_west( position ):
-			return position.south_west()
-
-		def south_east( position ):
-			return position.south_east()
-
 		jumpable_positions = [
-			find_first_blank_square( self.get_position(), east ),
-			find_first_blank_square( self.get_position(), west ),
-			find_first_blank_square( self.get_position(), north_west ),
-			find_first_blank_square( self.get_position(), north_east ),
-			find_first_blank_square( self.get_position(), south_west ),
-			find_first_blank_square( self.get_position(), south_east ),
+			find_first_blank_square( self.get_position(), lambda position : position.east() ),
+			find_first_blank_square( self.get_position(), lambda position : position.west() ),
+			find_first_blank_square( self.get_position(), lambda position : position.north_west() ),
+			find_first_blank_square( self.get_position(), lambda position : position.north_east() ),
+			find_first_blank_square( self.get_position(), lambda position : position.south_west() ),
+			find_first_blank_square( self.get_position(), lambda position : position.south_east() ),
 		]
 
+		# If one of the jumpable positions is directly adjacent then ignore it
 		non_adjacent_jumpable_positions = [ x for x in jumpable_positions \
 			if x not in self.get_position().get_adjacent_positions() ]
 

@@ -9,7 +9,6 @@ display_surface = None
 
 def init():
 	pygame.init()
-
 	global display_surface
 	display_surface = pygame.display.set_mode( config.screen_dimensions, pygame.DOUBLEBUF, 32 )
 	pygame.display.set_caption( config.title )
@@ -20,13 +19,8 @@ def main():
 	player_one = Player( PlayerNumber.one )
 	player_two = Player( PlayerNumber.two )
 
-	# for y in range( 5 ):
-	# 	for x in range( 5 ):
-	# 		print "placing tile at position", Position( [ x, y ] )
-	# 		board.place_tile( TileType.spider, Position( [ x, y ] ), player_one )
-
-	ant_tile = board.place_tile( TileType.ant, Position( [ 1, 0 ] ), player_one )
-	beetle_tile = board.place_tile( TileType.beetle, Position( [ 0, 1 ] ), player_one )
+	board.place_tile( TileType.ant, Position( [ 1, 0 ] ), player_one )
+	board.place_tile( TileType.beetle, Position( [ 0, 1 ] ), player_one )
 	board.place_tile( TileType.bee, Position( [ 0, 2 ] ), player_one )
 	board.place_tile( TileType.beetle, Position( [ 0, 3 ] ), player_one )
 	board.place_tile( TileType.beetle, Position( [ 1, 3 ] ), player_one )
@@ -34,11 +28,8 @@ def main():
 	board.place_tile( TileType.beetle, Position( [ 3, 2 ] ), player_one )
 	board.place_tile( TileType.beetle, Position( [ 3, 1 ] ), player_one )
 	board.place_tile( TileType.beetle, Position( [ 3, 0 ] ), player_one )
-	bee_tile = board.place_tile( TileType.bee, Position( [ 2, 0 ] ), player_one )
+	board.place_tile( TileType.beetle, Position( [ 2, 0 ] ), player_one )
 	gh = board.place_tile( TileType.grass_hopper, Position( [ 1, 4 ] ), player_one )
-	# board.place_tile( TileType.grass_hopper, Position( [ 2, 2 ] ), player_one )
-	
-	# board.move_tile( ant_tile, Position( [ 1, 0 ] ) )
 
 	board.move_tile( gh, Position( [ -1, 1 ] ) )
 	board.move_tile( gh, Position( [ 1, 1 ] ) )
@@ -47,7 +38,6 @@ def main():
 	board.move_tile( gh, Position( [ 2, 2 ] ) )
 	board.move_tile( gh, Position( [ 1, 4 ] ) )
 	board.move_tile( gh, Position( [ -1, 1 ] ) )
-	# board.move_tile( gh, Position( [ -1, 1 ] ) )
 
 	while True:
 		for event in pygame.event.get():
@@ -56,7 +46,6 @@ def main():
 				return
 
 		pygame.display.update()
-
 		board.update()
 
 		display_surface.fill( ( 10, 10, 10 ) )

@@ -35,3 +35,11 @@ class Draw:
 			( 255, 255, 255 ) )
 
 		surface.blit( coordinate_label, coordinate_label_position )
+
+	@staticmethod
+	def image( surface, image, position ):
+		Draw.image_explicit( surface, image, *Draw.get_render_position( position ) )
+
+	@staticmethod
+	def image_explicit( surface, image, x, y ):
+		surface.blit( image, [ x, y ] )
