@@ -177,9 +177,6 @@ class Board:
 	def touching_same_player_piece( self, position, player ):
 		return any( [ tile for tile in self.get_adjacent_tiles( position ) if tile.player == player ] )
 
-	def players_first_tile( self, player ):
-		return len( [ tile for tile in self.tiles if tile.player == player ] ) == 0
-
 	def player_has_played_bee( self, player ):
 		return ( [ tile.type for tile in self.get_tiles_for_player( player ) ].count( TileType.bee ) > 0 )
 
@@ -214,7 +211,7 @@ class Board:
 		unoccupied_positions = self.get_unoccupied_positions()
 
 		# Player can place their first tile anywhere
-		if self.players_first_tile( player ):
+		if len( self.get_tiles_for_player( player ) ) == 0:
 			return unoccupied_positions
 
 		# Position must not have any adjacent positions that have tiles occupied by the opponent
