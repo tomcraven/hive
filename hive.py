@@ -20,9 +20,6 @@ def main():
 
 	board = Board( player_one, player_two )
 
-	# import random
-	# random.seed( 2 )
-
 	winning_player = None
 	while winning_player is None:
 		for event in pygame.event.get():
