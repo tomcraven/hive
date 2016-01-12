@@ -1,9 +1,9 @@
 import pygame
 from enum import Enum
 import texture_manager
-from player import PlayerNumber
 from position import Position
 from draw import Draw
+import copy
 
 class Tile( object ):
 	@staticmethod
@@ -68,12 +68,21 @@ class Tile( object ):
 			valid_positions = [ x for x in adjacent_free_positions_to_begin \
 				if self.adjacent_position_movement_is_wide_enough( board, begin, x ) \
 				and x not in visited_nodes ]
-			visited_nodes.extend( valid_positions )
 
-			if end in valid_positions:
+			# Find positions that have an adjacent tile that is not the current tile
+			valid_positions_with_adjacent_tile = []
+			for position in valid_positions:
+				adjacent_tiles = [ x for x in board.get_adjacent_tiles( position ) if x != self ]
+				if len( adjacent_tiles ) > 0:
+					valid_positions_with_adjacent_tile.append( position )
+
+
+			visited_nodes.extend( valid_positions_with_adjacent_tile )
+
+			if end in valid_positions_with_adjacent_tile:
 				return True
 
-			for position in valid_positions:
+			for position in valid_positions_with_adjacent_tile:
 				if can_create_path_between( position, end, visited_nodes ):
 					return True
 
@@ -81,6 +90,18 @@ class Tile( object ):
 
 		return can_create_path_between( self.get_position(), target_position, [] )
 
+	def has_occupied_shared_tile( self, board, a, b, apart_from = [] ):
+		a_adjacent_positions = list( a.get_adjacent_positions() )
+		b_adjacent_positions = list( b.get_adjacent_positions() )
+		shared_adjacent_positions = [ x for x in a_adjacent_positions if x in b_adjacent_positions ]
+		assert len( shared_adjacent_positions ) == 2
+
+		shared_adjacent_tiles = [
+			len( [ x for x in board.get_tiles_with_position( shared_adjacent_positions[0] ) if x not in apart_from ] ),
+			len( [ x for x in board.get_tiles_with_position( shared_adjacent_positions[1] ) if x not in apart_from ] )
+		]
+
+		return shared_adjacent_tiles.count( 0 ) == 1
 
 class Ant( Tile ):
 	def __init__( self, player ):
@@ -91,22 +112,7 @@ class Ant( Tile ):
 		# ant needs to be able to 'walk' into the space...
 		#...sometimes a gap might be too small for it to enter into (lol)
 
-		def get_free_positions_on_board():
-			free_positions = []
-			for tile in board.tiles:
-				if tile == self:
-					continue
-
-				adjacent_positions = tile.get_position().get_adjacent_positions()
-
-				for position in adjacent_positions:
-					if len( board.get_tiles_with_position( position ) ) == 0:
-						if position not in free_positions:
-							free_positions.append( position )
-
-			return free_positions
-
-		free_positions = get_free_positions_on_board()
+		free_positions = board.get_unoccupied_positions()
 		reachable_positions = [ x for x in free_positions if self.position_is_reachable( board, x, free_positions ) ]
 
 		return reachable_positions
@@ -129,24 +135,12 @@ class Bee( Tile ):
 		reachable_free_adjacent_positions = \
 			[ x for x in free_adjacent_positions if self.adjacent_position_movement_is_wide_enough( board, self.get_position(), x ) ]
 
-		def has_occupied_shared_tile( begin, end ):
-			begin_adjacent_positions = list( begin.get_adjacent_positions() )
-			end_adjacent_positions = list( end.get_adjacent_positions() )
-			shared_adjacent_positions = [ x for x in begin_adjacent_positions if x in end_adjacent_positions ]
-			assert len( shared_adjacent_positions ) == 2
-
-			shared_adjacent_tiles = [
-				len( board.get_tiles_with_position( shared_adjacent_positions[0] ) ),
-				len( board.get_tiles_with_position( shared_adjacent_positions[1] ) )
-			]
-
-			return shared_adjacent_tiles.count( 0 ) == 1
-
-		reachable_free_adjacent_positions = [ x for x in reachable_free_adjacent_positions if has_occupied_shared_tile( self.get_position(), x ) ]
+		reachable_free_adjacent_positions = [ x for x in reachable_free_adjacent_positions \
+			if self.has_occupied_shared_tile( board, self.get_position(), x, [ self ] ) ]
 
 		def movement_creates_an_island( end ):
 			tiles = list( board.tiles )
-			start_position = self.get_position()
+			start_position = copy.deepcopy( self.get_position() )
 			self.set_position( end, board )
 			connected_hive = board.hive_is_connected( tiles )
 			self.set_position( start_position, board )
@@ -175,13 +169,15 @@ class Beetle( Tile ):
 
 		def movement_creates_an_island( end ):
 			tiles = list( board.tiles )
-			start_position = self.get_position()
+			start_position = copy.deepcopy( self.get_position() )
 			self.set_position( end, board )
 			connected_hive = board.hive_is_connected( tiles )
 			self.set_position( start_position, board )
 			return not connected_hive
 
-		valid_positions = [ x for x in adjacent_positions if not movement_creates_an_island( x ) ]
+		valid_positions = [ x for x in adjacent_positions \
+			if not movement_creates_an_island( x ) and \
+			self.has_occupied_shared_tile( board, self.get_position(), x ) ]
 
 		return valid_positions
 
@@ -192,7 +188,7 @@ class Beetle( Tile ):
 
 		# Find the tiles we're ontop of, then find the highest one
 		tiles_ontop_of = board.get_tiles_with_position( position )
-		self.tile_underneith = next( ( x for x in tiles_ontop_of if x.beetle_ontop == None ), None )
+		self.tile_underneith = next( ( x for x in tiles_ontop_of if x.beetle_ontop == None and x is not self ), None )
 
 		# If we're not ontop of a tile, update the reference to this beetle
 		if self.tile_underneith is not None:
@@ -205,10 +201,13 @@ class Beetle( Tile ):
 	def create_scaled_image( self ):
 		scale_factor = 1
 		tile_underneith = self.tile_underneith
+
 		while tile_underneith is not None:
 			scale_factor *= 0.75
 
 			if tile_underneith.type == TileType.beetle:
+				assert tile_underneith != tile_underneith.tile_underneith
+
 				tile_underneith = tile_underneith.tile_underneith
 			else:
 				tile_underneith = None
@@ -261,7 +260,53 @@ class Spider( Tile ):
 		# Tiles must be free
 		# Can 'jump' gaps (might be tricky to create a test case for this)
 		# Must not double back on itself (i think)
-		return []
+
+		free_positions = board.get_unoccupied_positions()
+		reachable_positions = [ x for x in free_positions if self.position_is_reachable( board, x, free_positions ) ]
+
+		# Algorithm adapted from here: http://stackoverflow.com/a/58446
+		def routes_between( begin, end ):
+			routes = []
+
+			def find_routes_between( begin, end, visited ):
+				if len( visited ) == 0:
+					visited.append( begin )
+
+				adjacent_positions = visited[ len( visited ) - 1 ].get_adjacent_positions()
+				free_adjacent_positions = [ x for x in adjacent_positions \
+					if len( board.get_tiles_with_position( x ) ) == 0 and
+					board.touching_any( x, [ self ] ) and 
+					self.has_occupied_shared_tile( board, visited[ len( visited ) - 1 ], x, [ self ] ) ]
+
+				unvisted_free_adjacent_positions = [ x for x in free_adjacent_positions if x not in visited ]
+
+				for position in unvisted_free_adjacent_positions:
+					if position == end:
+						visited.append( position )
+						routes.append( visited[1:] )
+						visited.pop()
+
+				for position in unvisted_free_adjacent_positions:
+					if position == end:
+						continue
+
+					visited.append( position )
+					if len( visited ) < 4:
+						find_routes_between( begin, end, visited )
+					visited.pop()
+
+			find_routes_between( begin, end, [] )
+			return routes
+
+		positions_with_routes_of_length_3 = []
+		for reachable_position in reachable_positions:
+			routes = list( routes_between( self.get_position(), reachable_position ) )
+			route_lengths = [ len( route ) for route in routes ]
+
+			if 3 in route_lengths:
+				positions_with_routes_of_length_3.append( reachable_position )
+
+		return positions_with_routes_of_length_3
 
 class TileType( Enum ):
 	ant = 0
