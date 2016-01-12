@@ -2,9 +2,11 @@ import pygame
 import texture_manager
 
 class Draw:
+	__render_bounds = [ [ 0, 0 ], [ 0, 0 ] ]
+
 	@staticmethod
 	def rect( surface, x, y, width, height, colour ):
-		surface.fill( colour, [ x, y, width, height ] )
+		surface.fill( colour, [ x - Draw.__render_bounds[ 0 ][ 0 ], y - Draw.__render_bounds[ 0 ][ 1 ], width, height ] )
 
 	@staticmethod
 	def get_render_position( position ):
@@ -20,7 +22,7 @@ class Draw:
 
 	@staticmethod
 	def coordinate( surface, position ):
-		font = pygame.font.SysFont( "monospace", 15 )
+		font = pygame.font.SysFont( "monospace", 10 )
 		coordinate_label = font.render( str( position ), 1, ( 0, 0, 255 ) )
 		
 		render_position = Draw.get_render_position( position )
@@ -34,7 +36,7 @@ class Draw:
 			coordinate_label.get_height(), 
 			( 255, 255, 255 ) )
 
-		surface.blit( coordinate_label, coordinate_label_position )
+		Draw.image_explicit( surface, coordinate_label, *coordinate_label_position )
 
 	@staticmethod
 	def image( surface, image, position ):
@@ -42,4 +44,8 @@ class Draw:
 
 	@staticmethod
 	def image_explicit( surface, image, x, y ):
-		surface.blit( image, [ x, y ] )
+		surface.blit( image, [ x - Draw.__render_bounds[ 0 ][ 0 ], y - Draw.__render_bounds[ 0 ][ 1 ] ] )
+
+	@staticmethod
+	def set_render_bounds( bounds ):
+		Draw.__render_bounds = bounds
