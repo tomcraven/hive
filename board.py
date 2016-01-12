@@ -3,26 +3,158 @@ from player import PlayerNumber
 import config, pygame, itertools
 from position import Position
 from draw import Draw
+import texture_manager as texture_manager
+
+class PlayerBoardProxy:
+	def __init__( self, board, current_player ):
+		self.__board = board
+		self.__player = current_player
+
+		self.__has_performed_move = False
+
+	def get_valid_placements_for_tile( self, tile_type ):
+		return self.__board.get_valid_tile_placements( tile_type, self.__player )
+
+	def get_valid_movements_for_tile( self, tile ):
+		return self.__board.get_valid_movements_for_tile( tile, self.__player )
+
+	def get_unplayed_tiles( self ):
+		return [ x for x in self.__player.tiles if x not in self.__board.tiles ]
+
+	def get_played_tiles( self ):
+		return [ x for x in self.__player.tiles if x in self.__board.tiles ]
+
+	def place_tile( self, tile_type, position ):
+		print self.__player, "placed", tile_type, "at", position
+		self.__has_performed_move = True
+		return self.__board.place_tile( tile_type, position, self.__player )
+
+	def move_tile( self, tile, position ):
+		print self.__player, "moved", tile, "from", tile.get_position(), "to", position
+		self.__has_performed_move = True
+		self.__board.move_tile( self.__player, tile, position )
+
+	def has_performed_move( self ):
+		return self.__has_performed_move
 
 class Board:
-	def __init__( self ):
+	def __init__( self, player_one, player_two ):
 		self.tiles = []
 
+		self.__player_one = player_one
+		self.__player_two = player_two
+
+		self.__next_player = self.__player_one
+
+		self.__cached_tile_movements = {}
+
+		self.update_board_render_bounds()
+
+	def get_winner( self ):
+
+		def players_bee_is_surrounded( player ):
+			player_bee = next( ( x for x in self.get_tiles_for_player( player ) if x.type == TileType.bee ), None )
+
+			if player_bee is not None:
+				bee_position = player_bee.get_position()
+				return \
+					( len( self.get_tiles_with_position( bee_position.west() ) ) > 0 ) and \
+					( len( self.get_tiles_with_position( bee_position.east() ) ) > 0 ) and \
+					( len( self.get_tiles_with_position( bee_position.north_west() ) ) > 0 ) and \
+					( len( self.get_tiles_with_position( bee_position.north_east() ) ) > 0 ) and \
+					( len( self.get_tiles_with_position( bee_position.south_west() ) ) > 0 ) and \
+					( len( self.get_tiles_with_position( bee_position.south_east() ) ) > 0 )
+
+			return False
+
+		if players_bee_is_surrounded( self.__player_one ):
+			return self.__player_two
+
+		if players_bee_is_surrounded( self.__player_two ):
+			return self.__player_one
+
+		return None
+
 	def update( self ):
-		# get moves for each player? (maybe do this outside of this class)
-		# check for win/lose condition
-		# make sure we can see the whole board on the screen
-		pass
+		# todo - make sure that the AI has actually performed a move, passing is not allowed unless there are no moves
+		# todo - check for conditions in which both AIs are doing the same thing each time, in these cases it's a draw
+		board_proxy = PlayerBoardProxy( self, self.__next_player )
+		self.__next_player.perform_move( board_proxy )
+		self.__next_player = self.__player_two if self.__next_player is self.__player_one else self.__player_one
+
+		if not board_proxy.has_performed_move():
+			has_tiles_to_place = len( board_proxy.get_unplayed_tiles() ) > 0
+			has_tiles_to_move = False
+			for tile in board_proxy.get_played_tiles():
+				if len( board_proxy.get_valid_movements_for_tile( tile ) ) > 0:
+					has_tiles_to_move = True
+
+			if has_tiles_to_place or has_tiles_to_move:
+				raise ValueError( "Player must either play a tile or move a piece each turn (if able)",
+					"has_tiles_to_place:", has_tiles_to_place,
+					"has_tiles_to_move:", has_tiles_to_move )
+
+		assert self.hive_is_connected()
+
+		# Make sure we can see the whole board on the screen
+		self.update_board_render_bounds()
+
+		self.__cached_tile_movements = {}
+
+	def update_board_render_bounds( self ):
+		position_rect = [ 0, 0, 1, 1 ]
+		left, top, right, bottom = 0, 1, 2, 3
+
+		for tile in self.tiles:
+			position = tile.get_position().get()
+
+			position_rect[ left ] = min( position[ 0 ], position_rect[ left ] )
+			position_rect[ right ] = max( position[ 0 ], position_rect[ right ] )
+
+			position_rect[ top ] = min( position[ 1 ], position_rect[ top ] )
+			position_rect[ bottom ] = max( position[ 1 ], position_rect[ bottom ] )
+
+		self.__render_bounds = [
+			Draw.get_render_position( Position( [ position_rect[ left ], position_rect[ top ] ] ) ),
+			Draw.get_render_position( Position( [ position_rect[ right ], position_rect[ bottom ] ] ) )
+		]
+
+		# Create a 2.5 border for the coordinates around the edge of the hive
+		self.__render_bounds[ 0 ][ 0 ] -= 2.5 * texture_manager.average_width()
+		self.__render_bounds[ 0 ][ 1 ] -= 0.5 * texture_manager.average_height()
+		self.__render_bounds[ 1 ][ 0 ] += 2.5 * texture_manager.average_width()
+		self.__render_bounds[ 1 ][ 1 ] += 2.5 * texture_manager.average_height()
+
+		Draw.set_render_bounds( self.__render_bounds )
 
 	def render( self, surface ):
+
+		width = int( self.__render_bounds[ 1 ][ 0 ] - self.__render_bounds[ 0 ][ 0 ] )
+		height = int( self.__render_bounds[ 1 ][ 1 ] - self.__render_bounds[ 0 ][ 1 ] )
+		render_surface = pygame.Surface( ( width, height ) )
+
+		# Make sure we render the tiles under beetles first
+		rendered_tiles = []
 		for tile in self.tiles:
-			tile.render( surface )
+			def render_tile( tile ):
+				if tile.type == TileType.beetle and tile.tile_underneith is not None:
+					render_tile( tile.tile_underneith )
+
+				tile.render( render_surface )
+				rendered_tiles.append( tile )
+
+			if tile not in rendered_tiles:
+				render_tile( tile )
 
 		# Render the coordinates of all tiles and their adjacent pieces
 		# We're rendering each coordinate multiple times here, but it shouldn't matter too much
 		for tile in self.tiles:
 			for position in tile.get_position().get_adjacent_positions():
-				Draw.coordinate( surface, position )
+				Draw.coordinate( render_surface, position )
+
+		# Scale and blit our render surface to the screen surface
+		scaled_render_surface = pygame.transform.scale( render_surface, [ width, height ] )
+		surface.blit( scaled_render_surface, [ 0, 0 ] )
 
 	def touching( self, tile_position, position ):
 		return position in tile_position.get_adjacent_positions()
@@ -30,8 +162,8 @@ class Board:
 	def position_already_occupied( self, position ):
 		return any( [ tile.get_position() == position for tile in self.tiles ] )
 
-	def touching_any( self, position ):
-		return any( [ self.touching( tile.get_position(), position ) for tile in self.tiles ] )
+	def touching_any( self, position, apart_from_tiles = [] ):
+		return any( [ self.touching( tile.get_position(), position ) for tile in self.tiles if tile not in apart_from_tiles ] )
 
 	def get_adjacent_tiles( self, position ):
 		return [ tile for tile in self.tiles if self.touching( tile.get_position(), position ) ]
@@ -48,54 +180,69 @@ class Board:
 	def players_first_tile( self, player ):
 		return len( [ tile for tile in self.tiles if tile.player == player ] ) == 0
 
+	def player_has_played_bee( self, player ):
+		return ( [ tile.type for tile in self.get_tiles_for_player( player ) ].count( TileType.bee ) > 0 )
+
 	def player_needs_to_play_bee( self, player ):
 		players_tiles = self.get_tiles_for_player( player )
 		if len( players_tiles ) <= config.maximum_moves_before_bee:
 			return False
 
-		has_played_bee = ( [ tile.type for tile in players_tiles ].count( TileType.bee ) > 0 )
+		return not self.player_has_played_bee( player )
 
-		return not has_played_bee
-
-	def validate_tile_placement( self, position, player ):
-
-		# If the board is empty, the first piece can be played anywhere
+	# Returns all positions on the board that are 'unoccupied'
+	# These are not positions that are 'valid' tile placements or movements
+	def get_unoccupied_positions( self ):
 		if len( self.tiles ) == 0:
-			return
+			return [ Position( [ 0, 0 ] ) ]
 
-		# If player is trying to play ontop of an existing piece, that's a no-no
-		if self.position_already_occupied( position ):
-			raise ValueError( "There is already a piece at this position", position, player )
+		free_positions = []
+		for tile in self.tiles:
+			if tile == self:
+				continue
 
-		# If there are tiles on the board and it is the player's first piece...
-		#...this piece needs to be touching *any* another piece to be played
+			adjacent_positions = tile.get_position().get_adjacent_positions()
+
+			for position in adjacent_positions:
+				if len( self.get_tiles_with_position( position ) ) == 0:
+					if position not in free_positions:
+						free_positions.append( position )
+
+		return free_positions
+
+	def get_valid_tile_placements( self, tile_type, player ):
+		unoccupied_positions = self.get_unoccupied_positions()
+
+		# Player can place their first tile anywhere
 		if self.players_first_tile( player ):
-			if not self.touching_any( position ):
-				raise ValueError( "First tile is not touching another piece on the board", position, player)
-			return
+			return unoccupied_positions
 
-		# Both players already have pieces in play, the placed piece cannot touch any...
-		#...pieces from opponent
-		if self.touching_any_opponent_piece( position, player ):
-			raise ValueError( "Tile is touching an opponents piece", position, player )
+		# Position must not have any adjacent positions that have tiles occupied by the opponent
+		valid_positions = [ x for x in unoccupied_positions if not self.touching_any_opponent_piece( x, player ) ]
 
-		# The piece must be touching at least one piece from same player
-		if not self.touching_same_player_piece( position, player ):
-			# Not sure we can even get here...
-			raise ValueError( "Tile is not touching one of the same player's pieces", position, player )
+		# If player needs to play their bee, then force this tile to be played
+		if ( self.player_needs_to_play_bee( player ) ) and ( tile_type != TileType.bee ):
+			valid_positions = []
 
-		# Finally - check that we need to force the player to play bee
-		if self.player_needs_to_play_bee( player ):
-			raise ValueError( "Player needs to play their bee", player )
+		return valid_positions
+
+	def tile_in_play( self, tile ):
+		return tile in self.tiles
 
 	def place_tile( self, tile_type, position, player ):
-		self.validate_tile_placement( position, player )
+		valid_tile_placements = self.get_valid_tile_placements( tile_type, player )
+		if position not in valid_tile_placements:
+			raise ValueError( str( position ), "is not a valid placement for tile", tile_type,
+				"Valid placements are: ", ",".join( [ str( x ) for x in valid_tile_placements ] ) )
 
-		new_tile = Tile.create( tile_type, player )
-		new_tile.set_position( position, self )
-		self.tiles.append( new_tile )
+		tile = player.get_new_tile( tile_type, self )
+		if not tile:
+			raise ValueError( "Unable to play tile", tile_type, "Does", str( player ), "have this tile available to play?" )
 
-		return new_tile
+		tile.set_position( position, self )
+		self.tiles.append( tile )
+
+		return tile
 
 	def get_tiles_with_position( self, position ):
 		return [ x for x in self.tiles if x.get_position() == position ]
@@ -105,6 +252,9 @@ class Board:
 
 		if tiles is None:
 			tiles = self.tiles
+
+		if len( tiles ) == 0:
+			return True
 
 		def count_island_size( tile ):
 			visited_tiles.append( tile )
@@ -128,20 +278,24 @@ class Board:
 
 		return not connected_hive
 
-	def valid_movement_for_tile_type( self, tile, position ):
-		return position in tile.get_valid_positions( self )
+	def get_valid_movements_for_tile( self, tile, player ):
 
-	def validate_tile_movement( self, tile, position ):
-		if self.tile_is_pinned( tile ):
-			raise ValueError( "Tile is currently pinned", tile, position )
+		if self.__cached_tile_movements.has_key( tile ):
+			return self.__cached_tile_movements[ tile ]
 
-		if tile.beetle_ontop is not None:
-			raise ValueError( "Tile is currently under a beetle", tile, position )
+		valid_tile_movements = []
 
-		if not self.valid_movement_for_tile_type( tile, position ):
-			raise ValueError( "This is not a valid movement for this tile", tile, position )
+		if ( not self.tile_is_pinned( tile ) ) and ( tile.beetle_ontop is None ) and ( self.player_has_played_bee( player ) ):
+			valid_tile_movements = tile.get_valid_positions( self )
 
-	def move_tile( self, tile, position ):
-		self.validate_tile_movement( tile, position )
+		self.__cached_tile_movements[ tile ] = valid_tile_movements
+		return valid_tile_movements
+
+	def move_tile( self, player, tile, position ):
+		valid_tile_movements = self.get_valid_movements_for_tile( tile, player )
+
+		if not position in valid_tile_movements:
+			raise ValueError( str( position ), "is not a valid movement for tile", tile,
+				"Valid movements are: ", ",".join( [ str( x ) for x in valid_tile_movements ] ) )
 
 		tile.set_position( position, self )
