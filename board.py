@@ -292,6 +292,10 @@ class Board:
 		return valid_tile_movements
 
 	def move_tile( self, player, tile, position ):
+
+		if tile not in self.tiles:
+			raise ValueError( tile, "is not currently in play" )
+
 		valid_tile_movements = self.get_valid_movements_for_tile( tile, player )
 
 		if not position in valid_tile_movements:
