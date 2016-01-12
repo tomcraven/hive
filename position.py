@@ -10,6 +10,10 @@ class Position( object ):
 	def __str__( self ):
 		return str( self.__coordinate )
 
+	def __hash__( self ):
+		import hashlib
+		ret = int( hashlib.sha1( self.__str__() ).hexdigest(), 16 )
+
 	def set( self, new_position ):
 		self.__coordinate = new_position.__coordinate
 
