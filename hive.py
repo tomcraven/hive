@@ -4,6 +4,7 @@ from tile import TileType
 from board import Board
 from player import PlayerNumber, Player
 from position import Position
+import sys
 
 display_surface = None
 
@@ -14,30 +15,31 @@ def init():
 	pygame.display.set_caption( config.title )
 
 def main():
-	board = Board()
+	player_one = Player( PlayerNumber.one, sys.argv[ 1 ] )
+	player_two = Player( PlayerNumber.two, sys.argv[ 2 ] )
 
-	player_one = Player( PlayerNumber.one )
-	player_two = Player( PlayerNumber.two )
+	board = Board( player_one, player_two )
 
-	board.place_tile( TileType.ant, Position( [ 1, 0 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 0, 1 ] ), player_one )
-	board.place_tile( TileType.bee, Position( [ 0, 2 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 0, 3 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 1, 3 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 2 ,3 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 3, 2 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 3, 1 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 3, 0 ] ), player_one )
-	board.place_tile( TileType.beetle, Position( [ 2, 0 ] ), player_one )
-	gh = board.place_tile( TileType.grass_hopper, Position( [ 1, 4 ] ), player_one )
+	# import random
+	# random.seed( 2 )
 
-	board.move_tile( gh, Position( [ -1, 1 ] ) )
-	board.move_tile( gh, Position( [ 1, 1 ] ) )
-	board.move_tile( gh, Position( [ 2, -1 ] ) )
-	board.move_tile( gh, Position( [ 4, 2 ] ) )
-	board.move_tile( gh, Position( [ 2, 2 ] ) )
-	board.move_tile( gh, Position( [ 1, 4 ] ) )
-	board.move_tile( gh, Position( [ -1, 1 ] ) )
+	winning_player = None
+	while winning_player is None:
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+				return
+
+		pygame.display.update()
+		board.update()
+		winning_player = board.get_winner()
+
+		display_surface.fill( ( 10, 10, 10 ) )
+		board.render( display_surface )
+
+		time.sleep( 0.01 )
+
+	print winning_player, "has won"
 
 	while True:
 		for event in pygame.event.get():
@@ -46,13 +48,15 @@ def main():
 				return
 
 		pygame.display.update()
-		board.update()
-
 		display_surface.fill( ( 10, 10, 10 ) )
 		board.render( display_surface )
 
-		time.sleep( 0.1 )
+		time.sleep( 0.01 )
 
 if __name__ == '__main__':
+
+	if len( sys.argv ) != 3:
+		raise ValueError( "Pass in the AI files like this - python hive.py ai_1.py ai_2.py" )
+
 	init()
 	main()
