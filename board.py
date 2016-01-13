@@ -76,7 +76,6 @@ class Board:
 		return None
 
 	def update( self ):
-		# todo - make sure that the AI has actually performed a move, passing is not allowed unless there are no moves
 		# todo - check for conditions in which both AIs are doing the same thing each time, in these cases it's a draw
 		board_proxy = PlayerBoardProxy( self, self.__next_player )
 		self.__next_player.perform_move( board_proxy )
@@ -104,26 +103,28 @@ class Board:
 	def update_board_render_bounds( self ):
 		position_rect = [ 0, 0, 1, 1 ]
 		left, top, right, bottom = 0, 1, 2, 3
+		x, y = 0, 1
 
 		for tile in self.tiles:
 			position = tile.get_position().get()
 
-			position_rect[ left ] = min( position[ 0 ], position_rect[ left ] )
-			position_rect[ right ] = max( position[ 0 ], position_rect[ right ] )
+			position_rect[ left ] = min( position[ x ], position_rect[ left ] )
+			position_rect[ right ] = max( position[ x ], position_rect[ right ] )
 
-			position_rect[ top ] = min( position[ 1 ], position_rect[ top ] )
-			position_rect[ bottom ] = max( position[ 1 ], position_rect[ bottom ] )
+			position_rect[ top ] = min( position[ y ], position_rect[ top ] )
+			position_rect[ bottom ] = max( position[ y ], position_rect[ bottom ] )
 
 		self.__render_bounds = [
 			Draw.get_render_position( Position( [ position_rect[ left ], position_rect[ top ] ] ) ),
 			Draw.get_render_position( Position( [ position_rect[ right ], position_rect[ bottom ] ] ) )
 		]
 
-		# Create a 2.5 border for the coordinates around the edge of the hive
-		self.__render_bounds[ 0 ][ 0 ] -= 2.5 * texture_manager.average_width()
-		self.__render_bounds[ 0 ][ 1 ] -= 0.5 * texture_manager.average_height()
-		self.__render_bounds[ 1 ][ 0 ] += 2.5 * texture_manager.average_width()
-		self.__render_bounds[ 1 ][ 1 ] += 2.5 * texture_manager.average_height()
+		top_left, bottom_right = 0, 1
+		self.__render_bounds[ top_left ][ x ] -= 1.5 * texture_manager.average_width()
+		self.__render_bounds[ bottom_right ][ x ] += 2.5 * texture_manager.average_width()
+
+		self.__render_bounds[ top_left ][ y ] -= 0.5 * texture_manager.average_height()
+		self.__render_bounds[ bottom_right ][ y ] += 1.5 * texture_manager.average_height()
 
 		Draw.set_render_bounds( self.__render_bounds )
 
