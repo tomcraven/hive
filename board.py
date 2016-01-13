@@ -6,9 +6,10 @@ from draw import Draw
 import texture_manager as texture_manager
 
 class PlayerBoardProxy:
-	def __init__( self, board, current_player ):
+	def __init__( self, board, current_player, opponent_player ):
 		self.__board = board
 		self.__player = current_player
+		self.__opponent_player = opponent_player
 
 		self.__has_performed_move = False
 
@@ -18,18 +19,32 @@ class PlayerBoardProxy:
 	def get_valid_movements_for_tile( self, tile ):
 		return self.__board.get_valid_movements_for_tile( tile, self.__player )
 
-	def get_unplayed_tiles( self ):
-		return [ x for x in self.__player.tiles if x not in self.__board.tiles ]
-
-	def get_played_tiles( self ):
+	def get_my_played_tiles( self ):
 		return [ x for x in self.__player.tiles if x in self.__board.tiles ]
 
+	def get_my_unplayed_tiles( self ):
+		return [ x for x in self.__player.tiles if x not in self.__board.tiles ]
+
+	def get_opponent_played_tiles( self ):
+		return [ x for x in self.__opponent_player.tiles if x in self.__board.tiles ]
+
+	def get_opponent_unplayed_tiles( self ):
+		return [ x for x in self.__opponent_player.tiles if x not in self.__board.tiles ]
+
+	def get_tiles_with_position( self, position ):
+		return self.__board.get_tiles_with_position( position )
+
 	def place_tile( self, tile_type, position ):
-		print self.__player, "placed", tile_type, "at", position
+		assert self.__has_performed_move == False
+
 		self.__has_performed_move = True
-		return self.__board.place_tile( tile_type, position, self.__player )
+		placed_tile = self.__board.place_tile( tile_type, position, self.__player )
+		print self.__player, "placed", placed_tile, "at", position
+		return placed_tile
 
 	def move_tile( self, tile, position ):
+		assert self.__has_performed_move == False
+
 		print self.__player, "moved", tile, "from", tile.get_position(), "to", position
 		self.__has_performed_move = True
 		self.__board.move_tile( self.__player, tile, position )
@@ -67,6 +82,25 @@ class Board:
 
 			return False
 
+
+		def player_can_place( player ):
+			player_unplayed_tiles = [ x for x in player.tiles if x not in self.tiles ]
+			for tile in player_unplayed_tiles:
+				possible_placements = self.get_valid_tile_placements( tile.type, player )
+				if len( possible_placements ) > 0:
+					return True
+			return False
+
+		def player_can_move( player ):
+			player_played_tiles = self.get_tiles_for_player( player )
+			for tile in player_played_tiles:
+				if len( self.get_valid_movements_for_tile( tile, player ) ) > 0:
+					return True
+			return False
+
+		if ( not player_can_place( self.__next_player ) ) and ( not player_can_move( self.__next_player ) ):
+			return self.__player_two if self.__next_player is self.__player_one else self.__player_one
+
 		if players_bee_is_surrounded( self.__player_one ):
 			return self.__player_two
 
@@ -77,7 +111,7 @@ class Board:
 
 	def update( self ):
 		# todo - check for conditions in which both AIs are doing the same thing each time, in these cases it's a draw
-		board_proxy = PlayerBoardProxy( self, self.__next_player )
+		board_proxy = PlayerBoardProxy( self, self.__next_player, self.__player_two if self.__next_player is self.__player_one else self.__player_one )
 		self.__next_player.perform_move( board_proxy )
 		self.__next_player = self.__player_two if self.__next_player is self.__player_one else self.__player_one
 
