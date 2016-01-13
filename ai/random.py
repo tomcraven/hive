@@ -18,11 +18,6 @@ def perform_move( board ):
 			perform_movement( board )
 
 def perform_placement( board ):
-	unplayed_tiles = board.get_unplayed_tiles()
-
-	if len( unplayed_tiles ) == 0:
-		return
-
 	random_unplayed_tile = random.choice( board.get_unplayed_tiles() )
 	valid_positions_for_tile = board.get_valid_placements_for_tile( random_unplayed_tile.type )
 
