@@ -7,6 +7,7 @@ class Player:
 		self.__player_number = player_number
 
 		self.__ai_perform_move = imp.load_source( "", ai_file ).perform_move
+		self.__ai_file = ai_file
 		assert self.__ai_perform_move is not None
 
 		self.tiles = [
@@ -34,7 +35,7 @@ class Player:
 		return not self.__eq__( other )
 
 	def __str__( self ):
-		return "Player " + str( self.__player_number )
+		return "Player " + str( self.__player_number ) + " [" + self.__ai_file + "]"
 
 	def get_player_number( self ):
 		return self.__player_number
