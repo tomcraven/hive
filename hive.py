@@ -4,7 +4,7 @@ from tile import TileType
 from board import Board
 from player import PlayerNumber, Player
 from position import Position
-import sys
+import sys, random
 
 display_surface = None
 
@@ -15,6 +15,10 @@ def init():
 	pygame.display.set_caption( config.title )
 
 def main():
+	random_seed = int( time.time() * 1000 )
+	print "seeding random with", random_seed
+	random.seed( random_seed )
+
 	player_one = Player( PlayerNumber.one, sys.argv[ 1 ] )
 	player_two = Player( PlayerNumber.two, sys.argv[ 2 ] )
 
