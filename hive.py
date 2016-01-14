@@ -52,7 +52,7 @@ def main():
 		display_surface.fill( ( 10, 10, 10 ) )
 		board.render( display_surface )
 
-		time.sleep( 0.01 )
+		time.sleep( 0.1 )
 
 if __name__ == '__main__':
 
