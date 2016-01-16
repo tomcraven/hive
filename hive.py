@@ -1,7 +1,7 @@
 import pygame, time
 import config
 from tile import TileType
-from board import Board
+from board import Board, BoardState
 from player import PlayerNumber, Player
 from position import Position
 import sys, random
@@ -24,8 +24,8 @@ def main():
 
 	board = Board( player_one, player_two )
 
-	winning_player = None
-	while winning_player is None:
+	board_state = board.get_state()
+	while board_state != BoardState.game_finished:
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				pygame.quit()
@@ -33,14 +33,19 @@ def main():
 
 		pygame.display.update()
 		board.update()
-		winning_player = board.get_winner()
+		board_state = board.get_state()
 
 		display_surface.fill( ( 10, 10, 10 ) )
 		board.render( display_surface )
 
 		time.sleep( 0.01 )
 
-	print winning_player, "has won"
+	winning_player = board.get_winner()
+	if winning_player is None:
+		print "Game is a tie"
+	else:
+		print winning_player, "has won"
+
 
 	while True:
 		for event in pygame.event.get():
