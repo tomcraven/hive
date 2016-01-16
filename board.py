@@ -4,6 +4,12 @@ import config, pygame, itertools
 from position import Position
 from draw import Draw
 import texture_manager as texture_manager
+from enum import Enum
+
+class BoardState( Enum ):
+	pre_game = 0
+	during_game = 1
+	game_finished = 2
 
 class PlayerBoardProxy:
 	def __init__( self, board, current_player, opponent_player ):
@@ -52,6 +58,12 @@ class PlayerBoardProxy:
 	def has_performed_move( self ):
 		return self.__has_performed_move
 
+	def get_me( self ):
+		return self.__player
+
+	def get_opponent( self ):
+		return self.__opponent_player
+
 class Board:
 	def __init__( self, player_one, player_two ):
 		self.tiles = []
@@ -65,46 +77,57 @@ class Board:
 
 		self.update_board_render_bounds()
 
+		self.__board_state = BoardState.pre_game
+
+	def get_state( self ):
+		return self.__board_state
+
+	def players_bee_is_surrounded( self, player ):
+		player_bee = next( ( x for x in self.get_tiles_for_player( player ) if x.type == TileType.bee ), None )
+
+		if player_bee is not None:
+			bee_position = player_bee.get_position()
+			return \
+				( len( self.get_tiles_with_position( bee_position.west() ) ) > 0 ) and \
+				( len( self.get_tiles_with_position( bee_position.east() ) ) > 0 ) and \
+				( len( self.get_tiles_with_position( bee_position.north_west() ) ) > 0 ) and \
+				( len( self.get_tiles_with_position( bee_position.north_east() ) ) > 0 ) and \
+				( len( self.get_tiles_with_position( bee_position.south_west() ) ) > 0 ) and \
+				( len( self.get_tiles_with_position( bee_position.south_east() ) ) > 0 )
+
+		return False
+
+	def player_can_place( self, player ):
+		player_unplayed_tiles = [ x for x in player.tiles if x not in self.tiles ]
+		for tile in player_unplayed_tiles:
+			possible_placements = self.get_valid_tile_placements( tile.type, player )
+			if len( possible_placements ) > 0:
+				return True
+		return False
+
+	def player_can_move( self, player ):
+		player_played_tiles = self.get_tiles_for_player( player )
+		for tile in player_played_tiles:
+			if len( self.get_valid_movements_for_tile( tile, player ) ) > 0:
+				return True
+		return False
+
 	def get_winner( self ):
 
-		def players_bee_is_surrounded( player ):
-			player_bee = next( ( x for x in self.get_tiles_for_player( player ) if x.type == TileType.bee ), None )
-
-			if player_bee is not None:
-				bee_position = player_bee.get_position()
-				return \
-					( len( self.get_tiles_with_position( bee_position.west() ) ) > 0 ) and \
-					( len( self.get_tiles_with_position( bee_position.east() ) ) > 0 ) and \
-					( len( self.get_tiles_with_position( bee_position.north_west() ) ) > 0 ) and \
-					( len( self.get_tiles_with_position( bee_position.north_east() ) ) > 0 ) and \
-					( len( self.get_tiles_with_position( bee_position.south_west() ) ) > 0 ) and \
-					( len( self.get_tiles_with_position( bee_position.south_east() ) ) > 0 )
-
-			return False
-
-
-		def player_can_place( player ):
-			player_unplayed_tiles = [ x for x in player.tiles if x not in self.tiles ]
-			for tile in player_unplayed_tiles:
-				possible_placements = self.get_valid_tile_placements( tile.type, player )
-				if len( possible_placements ) > 0:
-					return True
-			return False
-
-		def player_can_move( player ):
-			player_played_tiles = self.get_tiles_for_player( player )
-			for tile in player_played_tiles:
-				if len( self.get_valid_movements_for_tile( tile, player ) ) > 0:
-					return True
-			return False
-
-		if ( not player_can_place( self.__next_player ) ) and ( not player_can_move( self.__next_player ) ):
+		if ( not self.player_can_place( self.__next_player ) ) and ( not self.player_can_move( self.__next_player ) ):
 			return self.__player_two if self.__next_player is self.__player_one else self.__player_one
 
-		if players_bee_is_surrounded( self.__player_one ):
+		player_one_surrounded = self.players_bee_is_surrounded( self.__player_one )
+		player_two_surrounded = self.players_bee_is_surrounded( self.__player_two )
+
+		if player_one_surrounded and player_two_surrounded:
+			assert self.__board_state == BoardState.game_finished
+			return None
+
+		if player_one_surrounded:
 			return self.__player_two
 
-		if players_bee_is_surrounded( self.__player_two ):
+		if player_two_surrounded:
 			return self.__player_one
 
 		return None
@@ -132,10 +155,15 @@ class Board:
 		# Make sure we can see the whole board on the screen
 		self.update_board_render_bounds()
 
+		if ( not self.player_can_place( self.__next_player ) ) and ( not self.player_can_move( self.__next_player ) ) \
+			or self.players_bee_is_surrounded( self.__player_one ) \
+			or self.players_bee_is_surrounded( self.__player_two ):
+			self.__board_state = BoardState.game_finished
+
 		self.__cached_tile_movements = {}
 
 	def update_board_render_bounds( self ):
-		position_rect = [ 0, 0, 1, 1 ]
+		position_rect = [ -5, -5, 5, 5 ]
 		left, top, right, bottom = 0, 1, 2, 3
 		x, y = 0, 1
 
@@ -247,6 +275,11 @@ class Board:
 
 		# Player can place their first tile anywhere
 		if len( self.get_tiles_for_player( player ) ) == 0:
+
+			# Players cannot place their bee first
+			if tile_type == TileType.bee:
+				return []
+
 			return unoccupied_positions
 
 		# Position must not have any adjacent positions that have tiles occupied by the opponent

@@ -9,7 +9,7 @@ turn_number = 0
 def perform_move( board ):
 	global turn_number
 	turn_number += 1
-	if turn_number == 1:
+	if turn_number == 2:
 		board.place_tile( TileType.bee, 
 			board.get_valid_placements_for_tile( TileType.bee )[ 0 ] )
 		return
