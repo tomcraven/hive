@@ -11,3 +11,7 @@ It's currently very under tested, with no unit tests. So I wouldn't be surprised
 python hive.py path/to/ai.py path/to/ai.py
 
 There must be 2 ai scripts to play against each other. They can be the same script
+
+### Dependencies
+
+Only 1 dependency - pygame: http://www.pygame.org/hifi.html
