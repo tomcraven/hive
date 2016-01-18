@@ -4,9 +4,8 @@ import config, pygame, itertools
 from position import Position
 from draw import Draw
 import texture_manager as texture_manager
-from enum import Enum
 
-class BoardState( Enum ):
+class BoardState:
 	pre_game = 0
 	during_game = 1
 	game_finished = 2

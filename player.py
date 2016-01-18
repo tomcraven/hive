@@ -1,4 +1,3 @@
-from enum import Enum
 from tile import Tile, TileType
 import imp
 
@@ -53,7 +52,7 @@ class Player:
 
 		return unplayed_tile_with_type
 
-class PlayerNumber( Enum ):
+class PlayerNumber:
 	one = 1
 	two = 2
 

@@ -1,5 +1,4 @@
 import pygame
-from enum import Enum
 import texture_manager
 from position import Position
 from draw import Draw
@@ -308,7 +307,7 @@ class Spider( Tile ):
 
 		return positions_with_routes_of_length_3
 
-class TileType( Enum ):
+class TileType:
 	ant = 0
 	bee = 1
 	beetle = 2
