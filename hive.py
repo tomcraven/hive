@@ -15,7 +15,7 @@ def init():
 	pygame.display.set_caption( config.title )
 
 def main():
-	random_seed = 1460297195956#int( time.time() * 1000 )
+	random_seed = int( time.time() * 1000 )
 	print "seeding random with", random_seed
 	random.seed( random_seed )
 
