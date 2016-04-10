@@ -1,6 +1,6 @@
 import random
 
-def perform_move( board ):
+def perform_move( board, turn_number ):
 
 	has_tiles_to_place = len( board.get_my_unplayed_tiles() ) > 0
 

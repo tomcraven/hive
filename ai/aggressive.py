@@ -4,15 +4,15 @@ import sys
 sys.path.append( "../" )
 from tile import TileType
 
-turn_number = 0
-
-def perform_move( board ):
-	global turn_number
-	turn_number += 1
+def perform_move( board, turn_number ):
 	if turn_number == 2:
-		board.place_tile( TileType.bee, 
-			board.get_valid_placements_for_tile( TileType.bee )[ 0 ] )
-		return
+                my_bee = get_my_bee(board)
+                if my_bee is None:
+                        board.place_tile(
+                                TileType.bee,
+                                board.get_valid_placements_for_tile( TileType.bee )[ 0 ]
+                        )
+                        return
 
 	opponent_bee = get_opponent_bee( board )
 	if opponent_bee is not None:
@@ -72,12 +72,21 @@ def get_tiles_with_possible_move_positions( board, target_positions ):
 			ret.append( tile )
 	return ret
 
+def get_bee_from_tiles( tiles ):
+        for tile in tiles:
+                if tile.type == TileType.bee:
+                        return tile
+        return None
+
 def get_opponent_bee( board ):
-	opponent_played_tiles = board.get_opponent_played_tiles()
-	for tile in opponent_played_tiles:
-		if tile.type == TileType.bee:
-			return tile
-	return None
+        return get_bee_from_tiles(
+                board.get_opponent_played_tiles()
+        )
+
+def get_my_bee( board ):
+        return get_bee_from_tiles(
+                board.get_my_played_tiles()
+        )
 
 def perform_random_move( board ):
 

@@ -4,6 +4,7 @@ import imp
 class Player:
 	def __init__( self, player_number, ai_file ):
 		self.__player_number = player_number
+                self.__turn_number = 0
 
 		self.__ai_perform_move = imp.load_source( "", ai_file ).perform_move
 		self.__ai_file = ai_file
@@ -43,7 +44,8 @@ class Player:
 		return player_colour[ self.__player_number ]
 
 	def perform_move( self, board ):
-		self.__ai_perform_move( board )
+		self.__ai_perform_move( board, self.__turn_number )
+                self.__turn_number += 1
 
 	def get_new_tile( self, tile_type, board ):
 		unplayed_tile_with_type = next( ( x for x in self.tiles \

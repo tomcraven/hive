@@ -83,10 +83,10 @@ __turn_number = 0
 def shuffle( in_iterable ):
 	random.shuffle( in_iterable )
 	return in_iterable
- 
+
 # todo - work out my score, work out opponents score, maximise mine and minimise opponents
 
-def perform_move( board ):
+def perform_move( board, turn_number ):
 
 	tiles_in_play = board.get_my_played_tiles() + board.get_opponent_played_tiles()
 	best_action = get_best_action_for_board_state( board, tiles_in_play )
@@ -96,7 +96,7 @@ def perform_move( board ):
 		perform_random_move( board )
 
 	global __turn_number
-	__turn_number += 1
+	__turn_number = turn_number
 
 def get_best_action_for_board_state( board, tiles_in_play ):
 
@@ -118,7 +118,7 @@ def get_best_action_for_board_state( board, tiles_in_play ):
 	best_movement = Movement()
 	for tile in shuffle( board.get_my_played_tiles() ):
 		valid_movement_positions = shuffle( board.get_valid_movements_for_tile( tile ) )
-		
+
 		for movement_position in valid_movement_positions:
 			tiles_in_play.remove( tile )
 
